@@ -34,26 +34,32 @@
 
 import rospy
 from std_msgs.msg import UInt8
-
+# struct needed to convert an UInt8.data to a byte array to be sent with serial
 import serial, struct
 
 class plow_driver(object):
   def __init__(self):
-    #ROS init
+    # ROS init node and subscriber
     rospy.init_node('plow_driver')
+    # Listen for a /std_msgs/UInt8 on the topic /plow/angle 
     rospy.Subscriber('/plow/angle', UInt8, self.plowAngleSubCB)
 
+    # Set some parameters for the serial port (port and baudrate)
     plowPort = rospy.get_param('~port','/dev/ttyACM0')
     plowBaudrate = rospy.get_param('~baud',9600)
-
+    # and initialize the serial port (we should add close() somewhere in here)
     self.plowSerial = serial.Serial(port=plowPort,baudrate=plowBaudrate, timeout = 0.01)
 
+  # Callback function called when a message is published to /plow/angle
   def plowAngleSubCB(self, msg):
+    # Coerce the message to lie between 0 and 45, convert it to a byte array, and send it over serial to the arduino
     self.plowSerial.write(struct.pack("B",min(45,max(0,msg.data))))
 
+  # This function just runs rospy.spin(), which is essentially a blank while loop that keeps the program running while the subscriber keeps an eye on the topic /plow/angle, and runs the callback function when a message arrives.
   def run(self):
     rospy.spin()
 
+# If this script is executed, we will instaniate a plow_driver object and run the run function.
 if __name__ == "__main__":
   pd = plow_driver()
   pd.run()
